@@ -4,101 +4,79 @@ Unified Azure OpenAI Realtime solution that:
 - Hosts a FastAPI backend which issues ephemeral session keys, resolves function calls, and now serves a React single-page application.
 - Ships a modern React/Vite frontend cloned from [`contoso-voicecare-ai-unified`](https://github.com/samelhousseini/contoso-voicecare-ai-unified) for multi-industry support experiences.
 
-## Prerequisites
+## Deploy with Azure Developer CLI (preferred)
+
+The quickest way to stand up the full solution is with the [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/). It creates the Azure resources defined under `infra/`, builds the container image, and deploys the FastAPI + React app as an Azure Container App.
+
+1. **Install prerequisites**
+	- Azure subscription with Azure OpenAI Realtime preview access
+	- [`azd` CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+	- Azure CLI (required by `azd`) and authenticated session: `az login`
+2. **Prepare environment settings**
+	```powershell
+	azd env new
+	azd env set AZURE_GPT_REALTIME_URL https://<resource>.openai.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview
+	azd env set WEBRTC_URL https://<region>.realtimeapi-preview.ai.azure.com/v1/realtimertc
+	# Optional when using API key auth instead of Managed Identity
+	azd env set AZURE_GPT_REALTIME_KEY <your-key>
+	```
+	_Alternative_: create/maintain a local `.env` file (from `.env.sample`) 
+	
+3. **Provision and deploy**
+	```powershell
+	azd provision --preview   # optional dry run
+	azd up
+	```
+
+`azd up` returns deployment outputs such as `AZURE_AUDIO_BACKEND_URL`, which matches the value automatically injected into the frontend (`VITE_BACKEND_BASE_URL`).
+
+---
+
+## Manual setup for local development
+
+If you prefer to run everything locally, follow the condensed checklist below.
+
+### Prerequisites
 - Python 3.10+
-- An Azure OpenAI resource with Realtime preview access
-- Environment variables configured in `.env`
+- Node.js 20+
+- Azure OpenAI Realtime resource credentials (same values you would provide to `azd`)
 - [`uv`](https://github.com/astral-sh/uv) (recommended) or `pip`
 
-## Configuration
-1. Copy `.env.sample` to `.env`:
-	```powershell
-	Copy-Item .env.sample .env
-	```
-2. Replace the placeholder values in `.env` with the details for your Azure OpenAI resource:
-
-- `AZURE_GPT_REALTIME_URL` – `https://<resource>.openai.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview` 
-- `WEBRTC_URL` – `https://<region>.realtimeapi-preview.ai.azure.com/v1/realtimertc` - e.g. ``
-- `AZURE_GPT_REALTIME_KEY` – **Server-side only.** The FastAPI app uses this or a managed identity to talk to Azure.
-
-
-
-## Install dependencies
-
-Recommended (uv)
-uv is a fast Python package and environment manager. It creates an isolated virtual environment and resolves/installs dependencies quicker than pip.
-
-Install uv
-- macOS / Linux:
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# then ensure ~/.local/bin (or the printed path) is on PATH
-```
-- Windows (PowerShell):
+### Configure environment
 ```powershell
-irm https://astral.sh/uv/install.ps1 | iex
+Copy-Item .env.sample .env
 ```
-(Or with winget: winget install astral-sh.uv)
+Update the placeholders in `.env`:
+- `AZURE_GPT_REALTIME_URL = https://<resource>.openai.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview`
+- `WEBRTC_URL = https://<region>.realtimeapi-preview.ai.azure.com/v1/realtimertc`
+- `AZURE_GPT_REALTIME_KEY` only when not relying on Managed Identity
 
-Create & activate a virtual environment (optional; uv can also auto-manage one)
-```bash
-uv venv
-# Linux/macOS
-source .venv/bin/activate
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-```
+### Install dependencies
+- **Using uv (recommended)**
+  ```powershell
+  uv venv
+  uv pip install -e .
+  ```
+- **Using pip**
+  ```powershell
+  python -m venv .venv
+  .venv\Scripts\Activate.ps1
+  pip install -e .
+  ```
 
-Install project (editable) with uv:
-```bash
-uv pip install -e .
-```
-(Uses pyproject.toml for dependency resolution.)
-
-Alternative (pip)
-```bash
-python -m venv .venv
-# Linux/macOS
-source .venv/bin/activate
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-
-pip install --upgrade pip
-pip install -e .
-```
-
-
-## Run the stack locally
-
-1. **Install backend dependencies** (see above).
-2. **Install frontend dependencies & build**:
-	```powershell
-	cd frontend
-	npm ci
-	npm run build
-	cd ..
-	```
-3. **Expose the build output to the backend** (copy `frontend/dist` into `audio_backend/frontend_dist`).
-	```powershell
-	Remove-Item -Recurse -Force audio_backend\frontend_dist -ErrorAction SilentlyContinue
-	Copy-Item -Recurse -Force frontend\dist audio_backend\frontend_dist
-	```
-4. **Run the FastAPI backend** (serves APIs and the React app):
-	```powershell
-	uv run uvicorn audio_backend.backend:app --host 0.0.0.0 --port 8080
-	```
-5. Browse to `http://localhost:8080/` for the React UI. API endpoints remain available under `/api`.
-
-## Azure deployment (preferred)
-
-The recommended way to stand up this solution in Azure is with the Azure Developer CLI. Run a preview first to review the resource changes, then apply the deployment:
-
+### Run the stack locally
 ```powershell
-azd provision --preview
-azd up
-```
+cd frontend
+npm ci
+npm run build
+cd ..
 
-The `azd up` command handles provisioning the declared infrastructure (Bicep under `infra/`) and publishes the application in a single step.
+Remove-Item -Recurse -Force audio_backend\frontend_dist -ErrorAction SilentlyContinue
+Copy-Item -Recurse -Force frontend\dist audio_backend\frontend_dist
+
+uv run uvicorn audio_backend.backend:app --host 0.0.0.0 --port 8080
+```
+Navigate to `http://localhost:8080/` to verify the React UI and API endpoints.
 
 ## Container deployment
 
