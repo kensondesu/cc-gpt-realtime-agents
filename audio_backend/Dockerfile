@@ -1,25 +1,18 @@
 
-FROM node:20-bullseye AS frontend-builder
-
-WORKDIR /frontend
-
-COPY frontend/package*.json ./
-RUN npm ci
-
-COPY frontend/ ./
-RUN npm run build
-
-
 FROM python:3.11-bullseye AS runtime
-
 WORKDIR /app
 
-COPY audio_backend/requirements.txt ./requirements.txt
+COPY requirements.txt ./requirements.txt
 RUN pip install --upgrade pip \
 	&& pip install -r requirements.txt
 
-COPY audio_backend/ ./audio_backend
-COPY --from=frontend-builder /frontend/dist ./audio_backend/frontend_dist
+COPY . ./audio_backend
+
+RUN if [ ! -d "audio_backend/frontend_dist" ]; then \
+		echo "[ERROR] Missing frontend_dist assets." >&2; \
+		echo "        Build the frontend (npm run build) and copy the dist output into audio_backend/frontend_dist before building the image." >&2; \
+		exit 1; \
+	fi
 
 EXPOSE 8080
 

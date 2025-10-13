@@ -5,8 +5,9 @@ metadata:
   template: agent-call-center
 services:
   audio-backend:
-    project: audio_backend
+    project: .
     language: python
     host: containerapp
     docker:
+      context: .
       remoteBuild: true

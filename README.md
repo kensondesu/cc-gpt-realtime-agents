@@ -17,12 +17,10 @@ Unified Azure OpenAI Realtime solution that:
 	```
 2. Replace the placeholder values in `.env` with the details for your Azure OpenAI resource:
 
-- `AZURE_GPT_REALTIME_URL` – `https://<resource>.openai.azure.com/openai/realtimeapi/sessions?api-version=...`
-- `WEBRTC_URL` – `https://<region>.realtimeapi-preview.ai.azure.com/v1/realtimertc`
+- `AZURE_GPT_REALTIME_URL` – `https://<resource>.openai.azure.com/openai/realtimeapi/sessions?api-version=2025-04-01-preview` 
+- `WEBRTC_URL` – `https://<region>.realtimeapi-preview.ai.azure.com/v1/realtimertc` - e.g. ``
 - `AZURE_GPT_REALTIME_KEY` – **Server-side only.** The FastAPI app uses this or a managed identity to talk to Azure.
-- Optional overrides:
-	- `AZURE_GPT_REALTIME_DEPLOYMENT`
-	- `AZURE_GPT_REALTIME_VOICE`
+
 
 
 ## Install dependencies
