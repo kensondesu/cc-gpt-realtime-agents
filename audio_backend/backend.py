@@ -85,7 +85,7 @@ def _optional_env(name: str, default: str) -> str:
     return raw.strip().strip('"').strip("'")
 
 FRONTEND_DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
-FRONTEND_BACKEND_BASE_URL = _optional_env("VITE_BACKEND_BASE_URL", "http://localhost:8765/api")
+FRONTEND_BACKEND_BASE_URL = _optional_env("VITE_BACKEND_BASE_URL", "http://localhost:8080/api")
 
 print("REALTIME_SESSION_URL", REALTIME_SESSION_URL)
 print("WEBRTC_URL", WEBRTC_URL)
