@@ -277,13 +277,13 @@ async def shutdown_event() -> None:
 # ============================================================================
 # ACS Phone Integration (WebSocket only: Phone ↔ ACS ↔ AI Model)
 # ============================================================================
-# try:
-from backend_acs import router as acs_router, startup_event as acs_startup
-app.include_router(acs_router)
-app.on_event("startup")(acs_startup)
-logger.info("✅ ACS Phone integration routes mounted at /acs-phone/*")
-# except ImportError as e:
-#     logger.warning("⚠️  ACS Phone integration not available: %s", e)
+try:
+    from backend_acs import router as acs_router, startup_event as acs_startup
+    app.include_router(acs_router)
+    app.on_event("startup")(acs_startup)
+    logger.info("✅ ACS Phone integration routes mounted at /acs-phone/*")
+except ImportError as e:
+    logger.warning("⚠️  ACS Phone integration not available: %s", e)
 
 
 if FRONTEND_DIST_DIR.exists():
