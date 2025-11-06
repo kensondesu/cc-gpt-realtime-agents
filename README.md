@@ -208,3 +208,8 @@ Add new entries to the `TOOLS_REGISTRY` in `backend.py`. Each tool defines:
 - The `executor` coroutine/function that returns a JSON-serializable dictionary
 
 The frontend automatically advertises whatever tools the backend exposes and forwards function-call invocations over the `/api/function-call` endpoint.
+
+
+## Credits
+
+Helper classes and functions for supporting Azure Communications Services, especially the translation of audio message formats between ACS and the AI models, have been taken and adapted from the this [repo](https://github.com/Azure-Samples/realtime-call-center-accelerator), which was built by Robin Thiel et al. Thank you!
