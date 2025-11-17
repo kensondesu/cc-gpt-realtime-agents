@@ -165,7 +165,6 @@ cd frontend
 npm ci
 npm run build
 cd ..
-
 uv run uvicorn audio_backend.backend:app --host 0.0.0.0 --port 8080
 ```
 Navigate to `http://localhost:8080/` to verify the React UI and API endpoints.

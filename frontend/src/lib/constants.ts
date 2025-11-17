@@ -395,7 +395,7 @@ const runtimeBackendBaseUrl = runtimeConfig?.backendBaseUrl;
 export const CLIENT_CONFIG = {
   backendBaseUrl: runtimeBackendBaseUrl ?? import.meta.env.VITE_BACKEND_BASE_URL ?? "http://localhost:8080/api",
   deployment: "gpt-realtime",
-  voice: "verse",
+  voice: "alloy",
 };
 
 export const SYSTEM_PROMPT = `## Role & Objective

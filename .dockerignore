@@ -5,3 +5,32 @@ frontend/node_modules
 *.pyc
 .git
 .gitignore
+
+# Python virtual environments and caches
+.venv
+venv
+.env
+*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Azure and deployment
+.azure
+*.log
+
+# Documentation and images (not needed in container)
+images
+*.md
+!README.md
+
+# Development files
+.env.sample
+.azd

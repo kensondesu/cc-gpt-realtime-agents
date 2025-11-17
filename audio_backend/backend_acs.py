@@ -45,6 +45,7 @@ router = APIRouter(prefix="", tags=["ACS Phone Calls"])
 llm_endpoint_ws = os.environ.get("AZURE_OPENAI_ENDPOINT_WS")
 llm_deployment = os.environ.get("AZURE_OPENAI_MODEL_NAME")
 llm_key = os.environ.get("AZURE_OPENAI_API_KEY")
+llm_voice = os.environ.get("AZURE_GPT_REALTIME_VOICE", "alloy")
 acs_source_number = os.environ.get("ACS_PHONE_NUMBER")
 acs_connection_string = os.environ.get("AZURE_ACS_CONN_KEY")
 acs_callback_path = os.environ.get("CALLBACK_EVENTS_URI")
@@ -54,6 +55,7 @@ acs_media_streaming_websocket_host = os.environ.get("CALLBACK_URI_HOST")
 print("LLM Endpoint WS:", llm_endpoint_ws)
 print("LLM Deployment:", llm_deployment)
 print("LLM Key:", llm_key)
+print("LLM Voice:", llm_voice)
 print("ACS Source Number:", acs_source_number)
 print("ACS Connection String:", acs_connection_string)
 print("ACS Callback Path:", acs_callback_path)
@@ -192,6 +194,7 @@ async def initialize_acs_components():
     if llm_endpoint_ws and llm_deployment and llm_credential:
         rtmt = RTMiddleTier(llm_endpoint_ws, llm_deployment, llm_credential)
         rtmt.system_message = system_prompt
+        rtmt.selected_voice = llm_voice
         
         # Add example tool (can be customized)
         _weather_tool_schema = {

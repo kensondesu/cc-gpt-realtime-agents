@@ -19,7 +19,6 @@ RUN pip install --upgrade pip \
 
 COPY audio_backend/ ./audio_backend
 COPY prompts/ ./prompts
-COPY .env ./.env
 
 COPY --from=frontend-builder /frontend/dist ./frontend/dist
 
