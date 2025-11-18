@@ -5,6 +5,7 @@ ipykernel
 aiohttp
 fastapi
 httpx
+websockets
 
 python-dotenv
 uvicorn[standard]

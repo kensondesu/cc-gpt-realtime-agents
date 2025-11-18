@@ -9,6 +9,7 @@ export interface ChatMessage {
   toolArgs?: any;
   toolResult?: any;
   audioUrl?: string;
+  ssml?: string; // optional SSML-wrapped version of content
 }
 
 export interface SuggestionCard {

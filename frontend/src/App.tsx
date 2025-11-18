@@ -6,16 +6,28 @@ import { SuggestionCards } from '@/components/SuggestionCards';
 import { MessageBubble } from '@/components/MessageBubble';
 import { ChatComposer } from '@/components/ChatComposer';
 import { useRealtimeSession } from '@/hooks/use-realtime-session';
+import { useVoiceLiveSession } from '@/hooks/use-voicelive-session';
 import { ChatMessage, EscalationState } from '@/lib/types';
 import { IndustryType } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Trash } from '@phosphor-icons/react';
+import { fetchApiMode } from '@/lib/utils';
 
 function App() {
   const [messages, setMessages] = useKV<ChatMessage[]>('chat-messages', []);
   const [selectedIndustry, setSelectedIndustry] = useKV<IndustryType>('selected-industry', 'telco');
   const [escalationState, setEscalationState] = useState<EscalationState>({ status: 'available' });
+  const [apiMode, setApiMode] = useState<string>('realtime');
   const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch API mode on mount
+  useEffect(() => {
+    fetchApiMode().then(config => {
+      setApiMode(config.mode);
+    });
+  }, []);
 
   const handleMessage = useCallback((message: ChatMessage) => {
     setMessages(prev => [...(prev || []), message]);
@@ -29,10 +41,24 @@ function App() {
     }
   }, []);
 
-  const { sessionState, startSession, endSession, toggleMute, sendTextMessage, isConnected, getCurrentMediaStream } = useRealtimeSession({
+  // Use the appropriate hook based on API mode
+  const realtimeSession = useRealtimeSession({
     onMessage: handleMessage,
     onStateChange: handleStateChange
   });
+
+  const voiceLiveSession = useVoiceLiveSession({
+    onMessage: handleMessage,
+    onStateChange: handleStateChange
+  });
+
+  // Delegate to the active session hook
+  const activeSession = apiMode === 'voicelive' ? voiceLiveSession : realtimeSession;
+  const { sessionState, initSession, endSession, toggleMute } = activeSession;
+  
+  // Note: useRealtimeSession has different method names, so we need to adapt
+  const isConnected = sessionState.status === 'connected';
+  const startSession = 'startSession' in activeSession ? (activeSession as any).startSession : initSession;
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -51,7 +77,12 @@ function App() {
 
   const handleSendMessage = (text: string) => {
     try {
-      sendTextMessage(text);
+      // Send text message only available in realtime mode
+      if (apiMode === 'realtime' && 'sendTextMessage' in activeSession) {
+        (activeSession as any).sendTextMessage(text);
+      } else {
+        toast.warning('Text messages not supported in Voice Live mode');
+      }
     } catch (error: any) {
       toast.error(`Failed to send message: ${error.message}`);
     }
@@ -90,6 +121,14 @@ function App() {
     toast.info('Chat cleared');
   };
 
+  // Helper to get media stream (only available in realtime mode)
+  const getCurrentMediaStream = () => {
+    if (apiMode === 'realtime' && 'getCurrentMediaStream' in activeSession) {
+      return (activeSession as any).getCurrentMediaStream();
+    }
+    return null;
+  };
+
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       <CallControls
@@ -99,6 +138,48 @@ function App() {
         onToggleMute={toggleMute}
         getCurrentMediaStream={getCurrentMediaStream}
       />
+
+      {/* API Mode Selector */}
+      <div className="px-4 py-2 bg-muted/50 border-b flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium">API Mode:</span>
+          <div className="flex items-center gap-2">
+            <span className={`text-sm ${ apiMode === 'realtime' ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+              GPT Realtime
+            </span>
+            <Switch
+              checked={apiMode === 'voicelive'}
+              onCheckedChange={async (checked) => {
+                const newMode = checked ? 'voicelive' : 'realtime';
+                try {
+                  const response = await fetch('/api/mode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: newMode })
+                  });
+                  if (response.ok) {
+                    const config = await response.json();
+                    setApiMode(config.mode);
+                    toast.success(`Switched to ${config.mode === 'voicelive' ? 'Voice Live (SSML)' : 'GPT Realtime'}`);
+                  } else {
+                    const error = await response.json();
+                    toast.error(error.detail || 'Failed to switch mode');
+                  }
+                } catch (error) {
+                  toast.error('Failed to switch API mode');
+                }
+              }}
+              disabled={isConnected}
+            />
+            <span className={`text-sm ${ apiMode === 'voicelive' ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+              Voice Live (SSML)
+            </span>
+          </div>
+        </div>
+        <Badge variant={apiMode === 'voicelive' ? 'default' : 'secondary'} className="ml-auto">
+          {apiMode === 'voicelive' ? 'SSML Enabled' : 'Real-time Audio'}
+        </Badge>
+      </div>
 
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Left Panel - Suggestions (Fixed, Non-scrollable, Flexible) */}

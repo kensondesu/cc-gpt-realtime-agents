@@ -32,6 +32,7 @@ from acs.helpers import load_prompt_from_markdown
 from acs.tools import *
 
 from tools_registry import *
+from voice_live_client import VoiceLiveClient, SSMLGenerator
 
 
 load_dotenv()
@@ -42,20 +43,31 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="", tags=["ACS Phone Calls"])
 
 # Environment variables - matching .env file
+api_mode = os.environ.get("API_MODE", "realtime")
 llm_endpoint_ws = os.environ.get("AZURE_OPENAI_ENDPOINT_WS")
 llm_deployment = os.environ.get("AZURE_OPENAI_MODEL_NAME")
 llm_key = os.environ.get("AZURE_OPENAI_API_KEY")
 llm_voice = os.environ.get("AZURE_GPT_REALTIME_VOICE", "alloy")
+
+# Voice Live API Configuration
+voice_live_endpoint = os.environ.get("VOICE_LIVE_API_ENDPOINT", "")
+voice_live_key = os.environ.get("VOICE_LIVE_API_KEY", "")
+voice_live_deployment = os.environ.get("VOICE_LIVE_DEPLOYMENT", "tts-model")
+voice_live_voice = os.environ.get("VOICE_LIVE_DEFAULT_VOICE", "en-US-AvaMultilingualNeural")
+
 acs_source_number = os.environ.get("ACS_PHONE_NUMBER")
 acs_connection_string = os.environ.get("AZURE_ACS_CONN_KEY")
 acs_callback_path = os.environ.get("CALLBACK_EVENTS_URI")
 acs_media_streaming_websocket_host = os.environ.get("CALLBACK_URI_HOST")
 
 
+print("API Mode:", api_mode)
 print("LLM Endpoint WS:", llm_endpoint_ws)
 print("LLM Deployment:", llm_deployment)
 print("LLM Key:", llm_key)
 print("LLM Voice:", llm_voice)
+print("Voice Live Endpoint:", voice_live_endpoint)
+print("Voice Live Configured:", bool(voice_live_endpoint and voice_live_key))
 print("ACS Source Number:", acs_source_number)
 print("ACS Connection String:", acs_connection_string)
 print("ACS Callback Path:", acs_callback_path)
@@ -68,6 +80,7 @@ llm_credential = AzureKeyCredential(llm_key) if llm_key else None
 caller: Optional[AcsCaller] = None
 rtmt: Optional[RTMiddleTier] = None
 event_handler: Optional[EventHandler] = None
+voice_live_client: Optional[VoiceLiveClient] = None
 
 
 class PhoneCallRequest(BaseModel):
@@ -154,9 +167,10 @@ class FastAPIWebSocketAdapter:
 # ============================================================================
 async def initialize_acs_components():
     """Initialize ACS components with configuration"""
-    global caller, rtmt, event_handler
+    global caller, rtmt, event_handler, voice_live_client
     
     console.log("[ACS INIT] Initializing ACS phone call components...")
+    console.log(f"[ACS INIT] API Mode: {api_mode}")
     
     # Initialize ACS caller
     print("Initialize ACS caller", acs_source_number, acs_connection_string, acs_callback_path, acs_media_streaming_websocket_host)
@@ -190,8 +204,20 @@ async def initialize_acs_components():
             console.log("[ACS INIT] ⚠️  System prompt not found, using default")
             system_prompt = "You are a helpful AI assistant handling phone calls."
     
-    # Initialize RTMiddleTier (WebSocket-based middle tier for ACS)
-    if llm_endpoint_ws and llm_deployment and llm_credential:
+    # Initialize Voice Live API client if in voicelive mode
+    if api_mode == "voicelive" and voice_live_endpoint and voice_live_key:
+        voice_live_client = VoiceLiveClient(
+            endpoint=voice_live_endpoint,
+            api_key=voice_live_key,
+            deployment=voice_live_deployment,
+            default_voice=voice_live_voice
+        )
+        console.log("[ACS INIT] ✅ Voice Live API client initialized")
+    elif api_mode == "voicelive":
+        console.log("[ACS INIT] ⚠️  Voice Live API mode selected but not configured")
+    
+    # Initialize RTMiddleTier (WebSocket-based middle tier for ACS) if in realtime mode
+    if api_mode == "realtime" and llm_endpoint_ws and llm_deployment and llm_credential:
         rtmt = RTMiddleTier(llm_endpoint_ws, llm_deployment, llm_credential)
         rtmt.system_message = system_prompt
         rtmt.selected_voice = llm_voice
@@ -230,8 +256,8 @@ async def initialize_acs_components():
         register_tools_from_registry(rtmt, TOOLS_REGISTRY)
         
         console.log("[ACS INIT] ✅ RTMiddleTier (WebSocket) initialized")
-    else:
-        console.log("[ACS INIT] ⚠️  RTMiddleTier not configured (missing Azure OpenAI settings)")
+    elif api_mode == "realtime":
+        console.log("[ACS INIT] ⚠️  Realtime mode selected but not configured (missing Azure OpenAI settings)")
     
     # Initialize event handler
     if caller:
